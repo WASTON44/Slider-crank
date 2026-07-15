@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slider Crank Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f1f0ea; --panel:#ffffff; --ink:#22262c; --muted:#7d838d;
+    --line:#e2e0d6; --grid:#e9e7de; --beam:#343a43; --acc:#2f5fc4;
+    --mom:#b0621d; --reac:#1f8a4c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f1f0ea; }
+  a { color: #2f5fc4; }
+  a:hover { color: #1d448f; }
+  input:focus, select:focus { outline: 2px solid rgba(47,95,196,.35); outline-offset: 1px; }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+  button { font-family: inherit; }
+  .reset-btn:hover { border-color: var(--acc) !important; color: var(--acc) !important; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .lab-label { font: 600 10.5px 'IBM Plex Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .panel-label { font: 600 10px 'IBM Plex Sans', sans-serif; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+</style>
+</head>
+<body>
+<div id="root" style="min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',Helvetica,Arial,sans-serif;padding:18px 26px 44px;-webkit-font-smoothing:antialiased">
+  <div style="max-width:1280px;margin:0 auto">
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font:600 19px 'IBM Plex Sans',sans-serif">Slider Crank Lab</span>
+        <span style="font:400 12.5px 'IBM Plex Sans',sans-serif;color:var(--muted)">piston displacement, velocity &amp; acceleration, live</span>
+      </div>
+      <span class="mono" style="font-size:11.5px;color:var(--muted)">x from outer dead centre · θ from ODC, direction of rotation</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:14px 0 16px">
+      <button id="playBtn" style="padding:6px 14px;border:1px solid var(--acc);border-radius:7px;font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer;min-width:74px">▶ Run</button>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="panel-label">Crank R</span>
+        <input id="inR" type="number" min="0.01" step="0.01" class="mono" style="width:62px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:12px">
+        <span class="mono" style="font-size:11px;color:var(--muted)">m</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="panel-label">Rod L</span>
+        <input id="inL" type="number" min="0.02" step="0.01" class="mono" style="width:62px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:12px">
+        <span class="mono" style="font-size:11px;color:var(--muted)">m</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="panel-label">Speed n</span>
+        <input id="inN" type="number" min="0" step="1" class="mono" style="width:62px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:12px">
+        <span class="mono" style="font-size:11px;color:var(--muted)">rev/s</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <span class="panel-label">θ</span>
+        <input id="inTheta" type="number" step="1" class="mono" style="width:58px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:12px">
+        <span class="mono" style="font-size:11px;color:var(--muted)">°</span>
+      </div>
+      <div style="flex:1"></div>
+      <button id="resetBtn" class="reset-btn" style="padding:6px 11px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--muted);font:500 12px 'IBM Plex Sans',sans-serif;cursor:pointer">Reset demo</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:932px minmax(280px,1fr);gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+
+        <div class="card" style="padding:10px 14px 8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:0 2px 2px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:9px;height:9px;border-radius:2px;background:var(--beam)"></span>
+              <span class="lab-label">Mechanism · drag the crank pin</span>
+            </div>
+            <span id="mechChip" class="mono" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <svg id="mechSvg" width="900" height="300" viewBox="0 0 900 300" style="display:block;user-select:none;touch-action:none;max-width:100%">
+            <line x1="30" y1="170" x2="880" y2="170" style="stroke:var(--grid);stroke-width:1"></line>
+            <circle id="crankPath" cx="130" cy="170" r="0" style="fill:none;stroke:var(--grid);stroke-width:1.2;stroke-dasharray:4 4"></circle>
+            <rect id="guideTop" y="141" width="0" height="4" style="fill:var(--grid)"></rect>
+            <rect id="guideBot" y="195" width="0" height="4" style="fill:var(--grid)"></rect>
+            <line id="odcLine" y1="130" y2="210" style="stroke:var(--reac);stroke-width:1.4;stroke-dasharray:5 4"></line>
+            <text id="odcLabel" y="122" text-anchor="middle" class="mono" style="fill:var(--reac);font-size:10.5px;font-weight:500">x = 0 (ODC)</text>
+            <line id="rodLine" y1="170" y2="170" style="stroke:var(--beam);stroke-width:7;stroke-linecap:round"></line>
+            <line id="crankLine" x1="130" y1="170" style="stroke:var(--acc);stroke-width:8;stroke-linecap:round"></line>
+            <rect id="pistonRect" y="146" width="56" height="48" rx="5" style="fill:var(--mom);stroke:var(--panel);stroke-width:2"></rect>
+            <circle cx="130" cy="170" r="10" style="fill:var(--panel);stroke:var(--ink);stroke-width:2"></circle>
+            <circle id="pistonPin" cy="170" r="6" style="fill:var(--panel);stroke:var(--beam);stroke-width:2"></circle>
+            <g id="crankPinHandle" style="cursor:grab">
+              <circle id="pinHit" r="18" style="fill:transparent"></circle>
+              <circle id="pinDot" r="9" style="fill:var(--acc);stroke:var(--panel);stroke-width:2.4"></circle>
+            </g>
+            <text id="labelR" text-anchor="middle" class="mono" style="fill:var(--acc);font-size:11px;font-weight:500">R</text>
+            <text id="labelL" text-anchor="middle" class="mono" style="fill:var(--beam);font-size:11px;font-weight:500">L</text>
+            <text x="130" y="196" text-anchor="middle" class="mono" style="fill:var(--muted);font-size:10.5px">O</text>
+            <line id="xDimLine" y1="228" y2="228" style="stroke:var(--reac);stroke-width:1.6"></line>
+            <path id="xArrowHead" style="fill:var(--reac)"></path>
+            <text id="xLabel" y="246" text-anchor="middle" class="mono" style="fill:var(--reac);font-size:11px;font-weight:500"></text>
+          </svg>
+        </div>
+
+        <div class="card" style="padding:10px 14px 10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:0 2px 2px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:9px;height:9px;border-radius:2px;background:var(--reac)"></span>
+              <span class="lab-label">Velocity diagram · o–a–b</span>
+            </div>
+            <span id="vdChip" class="mono" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+            <svg width="470" height="300" viewBox="0 0 470 300" style="display:block;user-select:none;max-width:100%;flex:none">
+              <line id="vdOa" style="stroke:var(--acc);stroke-width:2.4;stroke-linecap:round"></line>
+              <path id="vdOaHead" style="fill:var(--acc)"></path>
+              <line id="vdAb" style="stroke:var(--beam);stroke-width:2.4;stroke-linecap:round"></line>
+              <path id="vdAbHead" style="fill:var(--beam)"></path>
+              <line id="vdOb" style="stroke:var(--mom);stroke-width:2.4;stroke-linecap:round;stroke-dasharray:6 4"></line>
+              <path id="vdObHead" style="fill:var(--mom)"></path>
+              <circle id="vdDotO" r="4" style="fill:var(--ink)"></circle>
+              <circle id="vdDotA" r="4" style="fill:var(--acc)"></circle>
+              <circle id="vdDotB" r="4" style="fill:var(--mom)"></circle>
+              <text id="vdLabO" text-anchor="middle" class="mono" style="fill:var(--ink);font-size:12px;font-weight:500">o</text>
+              <text id="vdLabA" text-anchor="middle" class="mono" style="fill:var(--acc);font-size:12px;font-weight:500">a</text>
+              <text id="vdLabB" text-anchor="middle" class="mono" style="fill:var(--mom);font-size:12px;font-weight:500">b</text>
+              <text id="vdOaLabel" text-anchor="middle" class="mono" style="fill:var(--acc);font-size:10.5px;font-weight:500"></text>
+              <text id="vdAbLabel" text-anchor="middle" class="mono" style="fill:var(--beam);font-size:10.5px;font-weight:500"></text>
+              <text id="vdObLabel" text-anchor="middle" class="mono" style="fill:var(--mom);font-size:10.5px;font-weight:500"></text>
+              <text id="vdDegenerateText" x="235" y="154" text-anchor="middle" style="fill:var(--muted);font:12px 'IBM Plex Sans',sans-serif;display:none">Dead centre — all velocities collapse to a point</text>
+            </svg>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:220px;flex:1">
+              <div id="vdVaLine" class="mono" style="font-size:12px;color:var(--acc)"></div>
+              <div id="vdVbaLine" class="mono" style="font-size:12px;color:var(--beam)"></div>
+              <div id="vdVbLine" class="mono" style="font-size:12px;color:var(--mom)"></div>
+              <div id="vdWrodLine" class="mono" style="font-size:12px;color:var(--ink);margin-top:4px"></div>
+              <div style="font:11.5px/1.5 'IBM Plex Sans',sans-serif;color:var(--muted);margin-top:4px">Drawn to scale from the fixed point o: oa is the crank-pin velocity, ab the velocity of the piston relative to the pin (⊥ connecting rod), and their closure ob is the piston velocity — as in the lecture's vector-diagram method.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:10px 14px 8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:0 2px 2px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:9px;height:9px;border-radius:2px;background:var(--acc)"></span>
+              <span class="lab-label">x, v, a over one revolution</span>
+            </div>
+            <div class="mono" style="display:flex;gap:14px;font-size:11px">
+              <span style="color:var(--reac)">— x (m)</span>
+              <span style="color:var(--acc)">— v (m/s)</span>
+              <span style="color:var(--mom)">— a (m/s²)</span>
+            </div>
+          </div>
+          <svg width="900" height="260" viewBox="0 0 900 260" style="display:block;user-select:none;max-width:100%">
+            <line x1="56" y1="130" x2="880" y2="130" style="stroke:var(--line);stroke-width:1"></line>
+            <g id="gridTicks"></g>
+            <path id="xPath" style="fill:none;stroke:var(--reac);stroke-width:2"></path>
+            <path id="vPath" style="fill:none;stroke:var(--acc);stroke-width:2"></path>
+            <path id="aPath" style="fill:none;stroke:var(--mom);stroke-width:2"></path>
+            <path id="vPathApx" style="fill:none;stroke:var(--acc);stroke-width:1.4;stroke-dasharray:4 4;opacity:.6"></path>
+            <path id="aPathApx" style="fill:none;stroke:var(--mom);stroke-width:1.4;stroke-dasharray:4 4;opacity:.6"></path>
+            <line id="cursorLine" y1="18" y2="242" style="stroke:var(--ink);stroke-width:1.2;stroke-dasharray:3 3;opacity:.6"></line>
+            <circle id="xDot" r="4" style="fill:var(--reac)"></circle>
+            <circle id="vDot" r="4" style="fill:var(--acc)"></circle>
+            <circle id="aDot" r="4" style="fill:var(--mom)"></circle>
+          </svg>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div class="card" style="padding:11px 12px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="ratioDot" style="width:8px;height:8px;border-radius:50%;flex:none"></span>
+            <span id="ratioText" style="font:500 12.5px 'IBM Plex Sans',sans-serif"></span>
+          </div>
+          <div class="panel-label" style="margin-top:2px">At θ = <span id="thetaChip"></span>°</div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div id="exact0" class="mono" style="font-size:12px;color:var(--ink)"></div>
+            <div id="exact1" class="mono" style="font-size:12px;color:var(--ink)"></div>
+            <div id="exact2" class="mono" style="font-size:12px;color:var(--ink)"></div>
+            <div id="exact3" class="mono" style="font-size:12px;color:var(--ink)"></div>
+          </div>
+          <div class="panel-label" style="margin-top:4px">Binomial approximation</div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <div id="apx0" class="mono" style="font-size:12px;color:var(--muted)"></div>
+            <div id="apx1" class="mono" style="font-size:12px;color:var(--muted)"></div>
+            <div id="apx2" class="mono" style="font-size:12px;color:var(--muted)"></div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:11px 12px;display:flex;flex-direction:column;gap:7px">
+          <div class="panel-label">Equations (approx., R/L &lt; 0.25)</div>
+          <div class="mono" style="font-size:12px;line-height:1.7;color:var(--ink)">
+            x ≈ R(1−cosθ) + <span style="color:var(--muted)">R²sin²θ/2L</span><br>
+            v ≈ ωR(sinθ + <span style="color:var(--muted)">R·sin2θ/2L</span>)<br>
+            a ≈ ω²R(cosθ + <span style="color:var(--muted)">R·cos2θ/L</span>)
+          </div>
+          <div style="font:11.5px 'IBM Plex Sans',sans-serif;color:var(--muted)">Solid curves are exact; dashed are the binomial approximation from the lecture.</div>
+        </div>
+
+        <div class="card" style="padding:11px 12px;display:flex;flex-direction:column;gap:6px">
+          <div class="panel-label">Extremes over one revolution</div>
+          <div id="ext0" class="mono" style="font-size:12px;color:var(--ink)"></div>
+          <div id="ext1" class="mono" style="font-size:12px;color:var(--ink)"></div>
+          <div id="ext2" class="mono" style="font-size:12px;color:var(--ink)"></div>
+        </div>
+
+        <div style="font:11.5px/1.55 'IBM Plex Sans',sans-serif;color:var(--muted);padding:2px 4px">
+          Drag the blue crank pin to set θ, or press Run to spin at n rev/s. Displacement is measured from the outer dead centre (crank and rod in line), as in the lecture. Try R = 0.2 m, L = 0.5 m, n = 50 rev/s, θ = 60° — the exam question.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const DEFAULTS = { R: 0.2, L: 0.5, n: 50, theta: 60 * Math.PI / 180, playing: false };
+  const state = Object.assign({}, DEFAULTS);
+  const showApprox = true;
+
+  let dragging = false;
+  let lastTs = null;
+  const mechSvg = document.getElementById('mechSvg');
+
+  function fmt(v) {
+    if (!isFinite(v)) return '—';
+    const a = Math.abs(v);
+    const d = a >= 1000 ? 0 : a >= 100 ? 1 : a >= 10 ? 2 : 3;
+    let s = v.toFixed(d);
+    if (d > 0) s = s.replace(/\.?0+$/, '');
+    if (s === '-0') s = '0';
+    return s;
+  }
+
+  function geom() {
+    const { R, L } = state;
+    const span = L + R;
+    const px0 = 130;
+    const sc = Math.min(700 / span, 110 / R);
+    return { ox: px0, sc };
+  }
+
+  function kin(th, R, L, w) {
+    const s = Math.sin(th), c = Math.cos(th);
+    const root = Math.sqrt(Math.max(L * L - R * R * s * s, 1e-12));
+    const x = (L + R) - (R * c + root);
+    const v = w * R * s * (1 + R * c / root);
+    const u = R * R * s * c;
+    const du = R * R * (c * c - s * s);
+    const a = w * w * (R * c + du / root + (u * u) / (root * root * root));
+    return { x, v, a };
+  }
+
+  function kinApx(th, R, L, w) {
+    const s = Math.sin(th), c = Math.cos(th);
+    return {
+      x: R * (1 - c) + R * R * s * s / (2 * L),
+      v: w * R * (s + R * Math.sin(2 * th) / (2 * L)),
+      a: w * w * R * (c + R * Math.cos(2 * th) / L)
+    };
+  }
+
+  function ah(x2, y2, dir) {
+    return 'M' + x2 + ' ' + y2 + ' L' + (x2 - dir * 9) + ' ' + (y2 - 4) + ' L' + (x2 - dir * 9) + ' ' + (y2 + 4) + ' Z';
+  }
+
+  function set(id, attr, val) { document.getElementById(id).setAttribute(attr, val); }
+  function text(id, val) { document.getElementById(id).textContent = val; }
+
+  // static grid ticks (positions are fixed regardless of state)
+  const W0 = 56, W1 = 880, H0 = 18, H1 = 242, MID = 130;
+  const X = (t) => +(W0 + t / (2 * Math.PI) * (W1 - W0)).toFixed(1);
+  (function buildGridTicks() {
+    const g = document.getElementById('gridTicks');
+    [0, 90, 180, 270, 360].forEach((d) => {
+      const px = X(d * Math.PI / 180);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', px); line.setAttribute('x2', px);
+      line.setAttribute('y1', 18); line.setAttribute('y2', 242);
+      line.setAttribute('style', 'stroke:var(--grid);stroke-width:1');
+      g.appendChild(line);
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', px); t.setAttribute('y', 256);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('class', 'mono');
+      t.setAttribute('style', 'fill:var(--muted);font-size:10px');
+      t.textContent = d + '°';
+      g.appendChild(t);
+    });
+  })();
+
+  function render() {
+    const { R, L, n, theta, playing } = state;
+    const w = 2 * Math.PI * n;
+    const th = theta;
+
+    // play button
+    const playBtn = document.getElementById('playBtn');
+    playBtn.textContent = playing ? '⏸ Pause' : '▶ Run';
+    playBtn.style.background = playing ? 'var(--acc)' : 'var(--panel)';
+    playBtn.style.color = playing ? '#fff' : 'var(--acc)';
+
+    // number inputs (reflect clamped state)
+    const inR = document.getElementById('inR'), inL = document.getElementById('inL'),
+      inN = document.getElementById('inN'), inTheta = document.getElementById('inTheta');
+    if (document.activeElement !== inR) inR.value = +R.toFixed(3);
+    if (document.activeElement !== inL) inL.value = +L.toFixed(3);
+    if (document.activeElement !== inN) inN.value = n;
+    if (document.activeElement !== inTheta) inTheta.value = Math.round(th * 180 / Math.PI);
+
+    // ---- mechanism geometry ----
+    const g = geom();
+    const pinX = +(g.ox + R * Math.cos(th) * g.sc).toFixed(1);
+    const pinY = +(170 + R * Math.sin(th) * g.sc).toFixed(1);
+    const rodPx = L * g.sc;
+    const dxp = Math.sqrt(Math.max(rodPx * rodPx - Math.pow(pinY - 170, 2), 0));
+    const pistonX = +(pinX + dxp).toFixed(1);
+    const odcPx = +(g.ox + (L + R) * g.sc).toFixed(1);
+    const K = kin(th, R, L, w);
+    const A = kinApx(th, R, L, w);
+
+    text('mechChip', 'R ' + fmt(R) + ' m · L ' + fmt(L) + ' m · stroke ' + fmt(2 * R) + ' m');
+    set('crankPath', 'cx', g.ox); set('crankPath', 'r', +(R * g.sc).toFixed(1));
+    set('guideTop', 'x', +(g.ox + (L - R) * g.sc - 40).toFixed(1));
+    set('guideTop', 'width', +(2 * R * g.sc + 100).toFixed(1));
+    set('guideBot', 'x', +(g.ox + (L - R) * g.sc - 40).toFixed(1));
+    set('guideBot', 'width', +(2 * R * g.sc + 100).toFixed(1));
+    set('odcLine', 'x1', odcPx); set('odcLine', 'x2', odcPx);
+    set('odcLabel', 'x', odcPx);
+    set('rodLine', 'x1', pinX); set('rodLine', 'y1', pinY); set('rodLine', 'x2', pistonX);
+    set('crankLine', 'x2', pinX); set('crankLine', 'y2', pinY);
+    set('pistonRect', 'x', +(pistonX - 28).toFixed(1));
+    set('pistonPin', 'cx', pistonX);
+    set('pinHit', 'cx', pinX); set('pinHit', 'cy', pinY);
+    set('pinDot', 'cx', pinX); set('pinDot', 'cy', pinY);
+    set('labelR', 'x', +((g.ox + pinX) / 2).toFixed(1));
+    set('labelR', 'y', +((170 + pinY) / 2 - 10).toFixed(1));
+    set('labelL', 'x', +((pinX + pistonX) / 2).toFixed(1));
+    set('labelL', 'y', +((pinY + 170) / 2 - 10).toFixed(1));
+    set('xDimLine', 'x1', pistonX); set('xDimLine', 'x2', odcPx);
+    set('xArrowHead', 'd', ah(odcPx, 228, 1));
+    set('xLabel', 'x', +((pistonX + odcPx) / 2).toFixed(1));
+    text('xLabel', 'x = ' + fmt(K.x) + ' m');
+
+    // ---- curves over one revolution ----
+    const N = 120;
+    let mx = 1e-12, mv = 1e-12, ma = 1e-12;
+    const samples = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N * 2 * Math.PI;
+      const k = kin(t, R, L, w), ka = kinApx(t, R, L, w);
+      samples.push({ t, k, ka });
+      mx = Math.max(mx, Math.abs(k.x), Math.abs(ka.x));
+      mv = Math.max(mv, Math.abs(k.v), Math.abs(ka.v));
+      ma = Math.max(ma, Math.abs(k.a), Math.abs(ka.a));
+    }
+    const Y = (val, m) => +(MID - val / m * 105).toFixed(1);
+    const path = (get, m) => samples.map((s, i) => (i ? 'L' : 'M') + X(s.t) + ' ' + Y(get(s), m)).join('');
+    set('xPath', 'd', path((s) => s.k.x, mx));
+    set('vPath', 'd', path((s) => s.k.v, mv));
+    set('aPath', 'd', path((s) => s.k.a, ma));
+    const vApx = document.getElementById('vPathApx'), aApx = document.getElementById('aPathApx');
+    if (showApprox) {
+      vApx.style.display = ''; aApx.style.display = '';
+      vApx.setAttribute('d', path((s) => s.ka.v, mv));
+      aApx.setAttribute('d', path((s) => s.ka.a, ma));
+    } else {
+      vApx.style.display = 'none'; aApx.style.display = 'none';
+    }
+
+    let vmax = 0, vmaxT = 0, amax = 0, amaxT = 0;
+    for (const s of samples) {
+      if (Math.abs(s.k.v) > vmax) { vmax = Math.abs(s.k.v); vmaxT = s.t; }
+      if (Math.abs(s.k.a) > amax) { amax = Math.abs(s.k.a); amaxT = s.t; }
+    }
+
+    const cursorPx = X(th);
+    set('cursorLine', 'x1', cursorPx); set('cursorLine', 'x2', cursorPx);
+    set('xDot', 'cx', cursorPx); set('xDot', 'cy', Y(K.x, mx));
+    set('vDot', 'cx', cursorPx); set('vDot', 'cy', Y(K.v, mv));
+    set('aDot', 'cx', cursorPx); set('aDot', 'cy', Y(K.a, ma));
+
+    // ---- velocity diagram ----
+    const vAsx = -w * R * Math.sin(th), vAsy = w * R * Math.cos(th);
+    const vBsx = -K.v, vBsy = 0;
+    const vBAx = vBsx - vAsx, vBAy = vBsy - vAsy;
+    const vaMag = Math.abs(w * R), vbMag = Math.abs(K.v), vbaMag = Math.sqrt(vBAx * vBAx + vBAy * vBAy);
+    const vdMax = Math.max(vaMag, vbMag, vbaMag, 1e-9);
+    const pO = { x: 0, y: 0 }, pA = { x: vAsx, y: vAsy }, pB = { x: vBsx, y: vBsy };
+    const vminx = Math.min(pO.x, pA.x, pB.x), vmaxx = Math.max(pO.x, pA.x, pB.x);
+    const vminy = Math.min(pO.y, pA.y, pB.y), vmaxy = Math.max(pO.y, pA.y, pB.y);
+    const vw = Math.max(vmaxx - vminx, 1e-9), vh = Math.max(vmaxy - vminy, 1e-9);
+    const vsc = Math.min(370 / vw, 220 / vh, 370 / vdMax);
+    const vox2 = 235 - (vminx + vw / 2) * vsc, voy2 = 150 - (vminy + vh / 2) * vsc;
+    const VP = (p) => ({ x: +(vox2 + p.x * vsc).toFixed(1), y: +(voy2 + p.y * vsc).toFixed(1) });
+    const dO = VP(pO), dA = VP(pA), dB = VP(pB);
+    const head = (p1, p2) => {
+      const dx = p2.x - p1.x, dy = p2.y - p1.y, Lh = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / Lh, uy = dy / Lh, s = 6;
+      const bx = p2.x - ux * s * 1.7, by = p2.y - uy * s * 1.7;
+      return 'M' + p2.x + ' ' + p2.y + ' L' + (bx - uy * s).toFixed(1) + ' ' + (by + ux * s).toFixed(1) + ' L' + (bx + uy * s).toFixed(1) + ' ' + (by - ux * s).toFixed(1) + ' Z';
+    };
+    const off = (p1, p2, d) => {
+      const dx = p2.x - p1.x, dy = p2.y - p1.y, Lh = Math.sqrt(dx * dx + dy * dy) || 1;
+      return { x: +((p1.x + p2.x) / 2 - dy / Lh * d).toFixed(1), y: +((p1.y + p2.y) / 2 + dx / Lh * d).toFixed(1) };
+    };
+    const labOa = off(dO, dA, 14), labAb = off(dA, dB, 14), labOb = off(dO, dB, -14);
+    const wRod = vbaMag / Math.max(L, 1e-9);
+    const vdDegenerate = vdMax * vsc < 8 || vaMag < 1e-9;
+    const thd = th * 180 / Math.PI;
+
+    text('vdChip', 'θ = ' + fmt(thd) + '° · scale auto');
+    set('vdOa', 'x1', dO.x); set('vdOa', 'y1', dO.y); set('vdOa', 'x2', dA.x); set('vdOa', 'y2', dA.y);
+    set('vdOaHead', 'd', head(dO, dA));
+    set('vdAb', 'x1', dA.x); set('vdAb', 'y1', dA.y); set('vdAb', 'x2', dB.x); set('vdAb', 'y2', dB.y);
+    set('vdAbHead', 'd', head(dA, dB));
+    set('vdOb', 'x1', dO.x); set('vdOb', 'y1', dO.y); set('vdOb', 'x2', dB.x); set('vdOb', 'y2', dB.y);
+    set('vdObHead', 'd', head(dO, dB));
+    set('vdDotO', 'cx', dO.x); set('vdDotO', 'cy', dO.y);
+    set('vdDotA', 'cx', dA.x); set('vdDotA', 'cy', dA.y);
+    set('vdDotB', 'cx', dB.x); set('vdDotB', 'cy', dB.y);
+    set('vdLabO', 'x', dO.x); set('vdLabO', 'y', +(dO.y + 18).toFixed(1));
+    set('vdLabA', 'x', dA.x); set('vdLabA', 'y', +(dA.y - 10).toFixed(1));
+    set('vdLabB', 'x', dB.x); set('vdLabB', 'y', +(dB.y + 18).toFixed(1));
+    set('vdOaLabel', 'x', labOa.x); set('vdOaLabel', 'y', labOa.y); text('vdOaLabel', 'oa ' + fmt(vaMag));
+    set('vdAbLabel', 'x', labAb.x); set('vdAbLabel', 'y', labAb.y); text('vdAbLabel', 'ab ' + fmt(vbaMag));
+    set('vdObLabel', 'x', labOb.x); set('vdObLabel', 'y', labOb.y); text('vdObLabel', 'ob ' + fmt(vbMag));
+    document.getElementById('vdDegenerateText').style.display = vdDegenerate ? '' : 'none';
+
+    text('vdVaLine', 'oa · v(A) = ωR = ' + fmt(vaMag) + ' m/s ⊥ crank');
+    text('vdVbaLine', 'ab · v(B/A) = ' + fmt(vbaMag) + ' m/s ⊥ rod');
+    text('vdVbLine', 'ob · v(B) = ' + fmt(vbMag) + ' m/s along piston axis');
+    text('vdWrodLine', 'ω(rod) = v(B/A)/L = ' + fmt(wRod) + ' rad/s');
+
+    // ---- side panel ----
+    const ratio = R / L;
+    const ratioOk = ratio < 0.25;
+    document.getElementById('ratioDot').style.background = ratioOk ? 'var(--reac)' : 'var(--mom)';
+    text('ratioText', 'R/L = ' + fmt(ratio) + (ratioOk ? ' — approximation valid (< 0.25)' : ' — approximation crude (≥ 0.25)'));
+    text('thetaChip', fmt(thd));
+
+    text('exact0', 'ω = 2πn = ' + fmt(w) + ' rad/s');
+    text('exact1', 'x = ' + fmt(K.x) + ' m');
+    text('exact2', 'v = ' + fmt(K.v) + ' m/s');
+    text('exact3', 'a = ' + fmt(K.a) + ' m/s²');
+
+    text('apx0', 'x ≈ ' + fmt(A.x) + ' m');
+    text('apx1', 'v ≈ ' + fmt(A.v) + ' m/s');
+    text('apx2', 'a ≈ ' + fmt(A.a) + ' m/s²');
+
+    text('ext0', 'stroke = 2R = ' + fmt(2 * R) + ' m');
+    text('ext1', '|v|max ≈ ' + fmt(vmax) + ' m/s @ θ ≈ ' + fmt(vmaxT * 180 / Math.PI) + '°');
+    text('ext2', '|a|max ≈ ' + fmt(amax) + ' m/s² @ θ ≈ ' + fmt(amaxT * 180 / Math.PI) + '°');
+  }
+
+  // ---- interaction ----
+  function numHandler(field, min) {
+    return (e) => {
+      let v = parseFloat(e.target.value);
+      if (!isFinite(v)) return;
+      v = Math.max(min, v);
+      if (field === 'L') v = Math.max(v, state.R + 0.01);
+      if (field === 'R') v = Math.min(v, state.L - 0.01);
+      state[field] = v;
+      render();
+    };
+  }
+  document.getElementById('inR').addEventListener('input', numHandler('R', 0.01));
+  document.getElementById('inL').addEventListener('input', numHandler('L', 0.02));
+  document.getElementById('inN').addEventListener('input', numHandler('n', 0));
+  document.getElementById('inTheta').addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    if (!isFinite(v)) return;
+    let d = v % 360; if (d < 0) d += 360;
+    state.theta = d * Math.PI / 180;
+    state.playing = false;
+    render();
+  });
+
+  document.getElementById('playBtn').addEventListener('click', () => {
+    state.playing = !state.playing;
+    render();
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    Object.assign(state, DEFAULTS);
+    render();
+  });
+
+  document.getElementById('crankPinHandle').addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    dragging = true;
+    state.playing = false;
+    render();
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging || !mechSvg) return;
+    const r = mechSvg.getBoundingClientRect();
+    const sc = r.width / 900;
+    const px = (e.clientX - r.left) / sc, py = (e.clientY - r.top) / sc;
+    const g = geom();
+    const dx = px - g.ox, dy = 170 - py;
+    let th = Math.atan2(dy, dx);
+    th = ((-th % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    state.theta = th;
+    render();
+  });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  // ---- animation loop ----
+  function tick(t) {
+    requestAnimationFrame(tick);
+    const dt = lastTs ? Math.min(0.05, (t - lastTs) / 1000) : 0;
+    lastTs = t;
+    if (!state.playing || dragging) return;
+    const visRev = Math.min(state.n, 0.6);
+    if (visRev <= 0) return;
+    state.theta = (state.theta + 2 * Math.PI * visRev * dt) % (2 * Math.PI);
+    render();
+  }
+  requestAnimationFrame(tick);
+
+  render();
+})();
+</script>
+</body>
+</html>
