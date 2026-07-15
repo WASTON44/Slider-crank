@@ -2,7 +2,6 @@
 
 An interactive slider-crank mechanism simulator for teaching piston displacement, velocity, and acceleration kinematics. Built as a single self-contained HTML file — no build step, no dependencies beyond a Google Fonts CDN link (falls back to system fonts if that's unavailable).
 
-**[Live demo](#)** — replace with your GitHub Pages URL once enabled (see below).
 
 ## What it does
 
@@ -22,15 +21,20 @@ An interactive slider-crank mechanism simulator for teaching piston displacement
 | Run / Pause | Animate the mechanism at the chosen speed |
 | Reset demo | Restores the defaults (R = 0.2 m, L = 0.5 m, n = 50 rev/s, θ = 60°) |
 
-## Running locally
+## Example
 
-Just open `slider-crank-lab.html` in a browser — it's fully self-contained.
 
-## Deploying to GitHub Pages
+## Embedding
 
-1. Push this repo to GitHub.
-2. In **Settings → Pages**, set the source to the `main` branch, root folder.
-3. Either rename `slider-crank-lab.html` to `index.html` (serves at the repo's root Pages URL), or leave the filename as-is and it'll be served at `https://<user>.github.io/<repo>/slider-crank-lab.html`.
+<iframe
+  src="https://waston44.github.io/Slider-crank/"
+  width="100%"
+  height="1500"
+  style="border:0; max-width:1320px;"
+  loading="lazy"
+  title="Slider Crank Lab">
+</iframe>
+
 
 ## Credits
 
