@@ -22,10 +22,12 @@ An interactive slider-crank mechanism simulator for teaching piston displacement
 | Reset demo | Restores the defaults (R = 0.2 m, L = 0.5 m, n = 50 rev/s, θ = 60°) |
 
 ## Example
+<img width="1669" height="920" alt="image" src="https://github.com/user-attachments/assets/65ffc6cb-40c4-4b20-b246-a63b006a16b9" />
 
 
 ## Embedding
 
+```
 <iframe
   src="https://waston44.github.io/Slider-crank/"
   width="100%"
@@ -34,6 +36,7 @@ An interactive slider-crank mechanism simulator for teaching piston displacement
   loading="lazy"
   title="Slider Crank Lab">
 </iframe>
+```
 
 
 ## Credits
